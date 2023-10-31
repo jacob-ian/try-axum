@@ -3,15 +3,18 @@ use axum_try::{
     users::{self, User},
     AppState,
 };
-use rust_embed::RustEmbed;
-use std::{borrow::Cow, sync::Arc};
+use include_dir::{include_dir, Dir};
+use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio_util::io::ReaderStream;
 
-use axum::{extract::Path, response::Html, routing::get, Router};
-
-#[derive(RustEmbed)]
-#[folder = "static/"]
-struct Assets;
+use axum::{
+    body::StreamBody,
+    extract::Path,
+    response::{Html, IntoResponse},
+    routing::get,
+    Router,
+};
 
 #[tokio::main]
 async fn main() {
@@ -21,7 +24,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(hello_world))
         .nest("/users", users::router())
-        .route("/static/:name", get(handle_static))
+        .route("/static/*path", get(serve_assets))
         .with_state(state);
 
     println!("Listening on 0.0.0.0:4000");
@@ -35,8 +38,12 @@ async fn hello_world() -> Html<&'static str> {
     return Html("<h1>Hello world</h1><img src=\"/static/test.png\"/>");
 }
 
-async fn handle_static(Path(name): Path<String>) -> Result<Cow<'static, [u8]>, Error> {
-    // this should be a stream
-    let file = Assets::get(&name).ok_or(Error::NotFound(String::from("Not found")))?;
-    return Ok(file.data);
+static ASSETS: Dir<'_> = include_dir!("static");
+async fn serve_assets(Path(path): Path<String>) -> Result<impl IntoResponse, Error> {
+    let file = ASSETS
+        .get_file(path)
+        .ok_or(Error::NotFound(String::from("Not found")))?;
+    let stream = ReaderStream::new(file.contents());
+    let body = StreamBody::new(stream);
+    return Ok(body);
 }
