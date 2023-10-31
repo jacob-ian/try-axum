@@ -35,7 +35,7 @@ async fn main() {
 }
 
 async fn hello_world() -> Html<&'static str> {
-    return Html("<h1>Hello world</h1><img src=\"/static/test.png\"/>");
+    return Html("<h1>Hello world</h1><img src=\"/assets/test.png\"/>");
 }
 
 static ASSETS: Dir<'_> = include_dir!("assets");
