@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.6.20", features = ["tokio", "json", "form", "macros"] }
 hyper = { version = "0.14.27", features = ["full"] }
+rust-embed = { version = "8.0.0", features = ["tokio"] }
 serde = { version = "1.0.190", features = ["derive"] }
 serde_json = "1.0.108"
 tokio = { version = "1.33.0", features = ["full"] }
