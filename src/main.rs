@@ -24,7 +24,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(hello_world))
         .nest("/users", users::router())
-        .route("/static/*path", get(serve_assets))
+        .route("/assets/*path", get(serve_assets))
         .with_state(state);
 
     println!("Listening on 0.0.0.0:4000");
@@ -38,7 +38,7 @@ async fn hello_world() -> Html<&'static str> {
     return Html("<h1>Hello world</h1><img src=\"/static/test.png\"/>");
 }
 
-static ASSETS: Dir<'_> = include_dir!("static");
+static ASSETS: Dir<'_> = include_dir!("assets");
 async fn serve_assets(Path(path): Path<String>) -> Result<impl IntoResponse, Error> {
     let file = ASSETS
         .get_file(path)
