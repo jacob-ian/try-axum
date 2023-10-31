@@ -7,30 +7,43 @@ use serde::Serialize;
 
 pub enum Error {
     BadRequest(String),
-}
-
-impl Error {
-    fn get_status_code(&self) -> StatusCode {
-        return match self {
-            Self::BadRequest(_) => StatusCode::BAD_REQUEST,
-        };
-    }
-
-    fn get_body(&self) -> ErrorBody {
-        let status = self.get_status_code();
-        return match self {
-            Self::BadRequest(m) => ErrorBody {
-                error: status.canonical_reason().unwrap_or("Unknown").to_string(),
-                error_description: m.to_string(),
-            },
-        };
-    }
+    NotFound(String),
 }
 
 #[derive(Serialize)]
 struct ErrorBody {
     error: String,
-    error_description: String,
+    description: String,
+}
+
+impl Error {
+    fn get_status_code(&self) -> StatusCode {
+        return match self {
+            Error::BadRequest(_) => StatusCode::BAD_REQUEST,
+            Error::NotFound(_) => StatusCode::NOT_FOUND,
+        };
+    }
+
+    fn get_body(&self) -> ErrorBody {
+        return match self {
+            Error::BadRequest(d) => ErrorBody {
+                error: self.get_reason(),
+                description: d.to_string(),
+            },
+            Error::NotFound(d) => ErrorBody {
+                error: self.get_reason(),
+                description: d.to_string(),
+            },
+        };
+    }
+
+    fn get_reason(&self) -> String {
+        return self
+            .get_status_code()
+            .canonical_reason()
+            .unwrap_or("Unknown")
+            .to_string();
+    }
 }
 
 impl IntoResponse for Error {

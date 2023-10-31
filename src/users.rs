@@ -1,4 +1,8 @@
-use axum::{extract::State, routing::get, Json, Router};
+use axum::{
+    extract::{Path, State},
+    routing::get,
+    Json, Router,
+};
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +20,9 @@ pub struct User {
 }
 
 pub fn router() -> Router<AppState> {
-    return Router::new().route("/", get(get_users).post(create_user));
+    return Router::new()
+        .route("/", get(get_users).post(create_user))
+        .route("/:user_id", get(get_user_by_id).delete(delete_user_by_id));
 }
 
 async fn get_users(State(state): State<AppState>) -> (StatusCode, Json<Vec<User>>) {
@@ -24,10 +30,29 @@ async fn get_users(State(state): State<AppState>) -> (StatusCode, Json<Vec<User>
     return (StatusCode::OK, Json(users));
 }
 
+async fn get_user_by_id(
+    State(state): State<AppState>,
+    Path(user_id): Path<String>,
+) -> Result<Json<User>, Error> {
+    let users = state.users.lock().await.to_owned();
+    let mut found: Option<User> = None;
+    for user in users {
+        if user.id == user_id {
+            found = Some(user);
+            break;
+        }
+    }
+    if let Some(u) = found {
+        return Ok(Json(u));
+    } else {
+        return Err(Error::NotFound(String::from("User not found")));
+    }
+}
+
 async fn create_user(
     State(state): State<AppState>,
     Json(payload): Json<CreateUser>,
-) -> Result<Json<User>, Error> {
+) -> Result<(StatusCode, Json<User>), Error> {
     let mut users = state.users.lock().await;
     let mut exists = false;
     for user in users.to_vec() {
@@ -36,7 +61,6 @@ async fn create_user(
             break;
         }
     }
-
     if exists {
         return Err(Error::BadRequest(String::from("username exists")));
     }
@@ -47,5 +71,29 @@ async fn create_user(
     };
 
     users.push(user.clone());
-    return Ok(Json(user));
+    return Ok((StatusCode::CREATED, Json(user)));
+}
+
+async fn delete_user_by_id(
+    State(state): State<AppState>,
+    Path(user_id): Path<String>,
+) -> Result<(StatusCode, ()), Error> {
+    let mut users = state.users.lock().await;
+    let mut updated: Vec<User> = Vec::new();
+    let mut found = false;
+    for user in users.to_vec() {
+        if user.id == user_id {
+            found = true;
+        }
+        if user.id != user_id {
+            updated.push(user);
+        }
+    }
+
+    if !found {
+        return Err(Error::NotFound(String::from("User not found")));
+    }
+
+    *users = updated;
+    return Ok((StatusCode::NO_CONTENT, ()));
 }
