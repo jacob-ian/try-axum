@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use users::User;
 
+pub mod assets;
 pub mod errors;
 pub mod users;
 

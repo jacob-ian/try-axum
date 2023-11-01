@@ -1,20 +1,12 @@
 use axum_try::{
-    errors::Error,
+    assets,
     users::{self, User},
     AppState,
 };
-use include_dir::{include_dir, Dir};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio_util::io::ReaderStream;
 
-use axum::{
-    body::StreamBody,
-    extract::Path,
-    response::{Html, IntoResponse},
-    routing::get,
-    Router,
-};
+use axum::{response::Html, routing::get, Router};
 
 #[tokio::main]
 async fn main() {
@@ -24,7 +16,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(hello_world))
         .nest("/users", users::router())
-        .route("/assets/*path", get(serve_assets))
+        .nest("/assets", assets::router())
         .with_state(state);
 
     println!("Listening on 0.0.0.0:4000");
@@ -36,14 +28,4 @@ async fn main() {
 
 async fn hello_world() -> Html<&'static str> {
     return Html("<h1>Hello world</h1><img src=\"/assets/test.png\"/>");
-}
-
-static ASSETS: Dir<'_> = include_dir!("assets");
-async fn serve_assets(Path(path): Path<String>) -> Result<impl IntoResponse, Error> {
-    let file = ASSETS
-        .get_file(path)
-        .ok_or(Error::NotFound(String::from("Not found")))?;
-    let stream = ReaderStream::new(file.contents());
-    let body = StreamBody::new(stream);
-    return Ok(body);
 }
